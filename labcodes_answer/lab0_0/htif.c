@@ -8,26 +8,27 @@ uintptr_t htif;
 
 static void __check_fromhost()
 {
-  uint64_t fh = fromhost;
-  if (!fh)
-    return;
-  fromhost = 0;
+    uint64_t fh = fromhost;
+    if (!fh)
+        return;
+    fromhost = 0;
 
-  // this should be from the console
-  switch (FROMHOST_CMD(fh)) {
+    // this should be from the console
+    switch (FROMHOST_CMD(fh))
+    {
     case 0:
-      htif_console_buf = 1 + (uint8_t)FROMHOST_DATA(fh);
-      break;
+        htif_console_buf = 1 + (uint8_t)FROMHOST_DATA(fh);
+        break;
     case 1:
-      break;
-  }
+        break;
+    }
 }
 
 static void __set_tohost(uintptr_t dev, uintptr_t cmd, uintptr_t data)
 {
-  while (tohost)
-    __check_fromhost();
-  tohost = TOHOST_CMD(dev, cmd, data);
+    while (tohost)
+        __check_fromhost();
+    tohost = TOHOST_CMD(dev, cmd, data);
 }
 
 void htif_console_putchar(uint8_t ch)
@@ -37,9 +38,9 @@ void htif_console_putchar(uint8_t ch)
 
 void htif_poweroff()
 {
-  while (1) {
-    fromhost = 0;
-    tohost = 1;
-  }
+    while (1)
+    {
+        fromhost = 0;
+        tohost = 1;
+    }
 }
-

@@ -23,3 +23,5 @@ disk0
 setenv-rv32.sh
 .settings
 *.old
+riscvemu32
+
