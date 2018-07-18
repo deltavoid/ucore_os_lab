@@ -1,0 +1,80 @@
+
+bbl架构分析
+riscv-privleged-v1.10
+
+    bbl(riscv-pk)是位于RISCV中M态的一层软件，它使用M态的功能，向上为S态提供初始化，中断处理，SBI调用等功能。
+    bbl有着类似于普通linux内核的架构，它同样有2个入口：初始化入口：mentry.S/reset_vector和中断入口：mentry.S/trap_vector。
+
+1. 初始化入口
+
+    bbl进入内存后，从mentry.S/reset_vector开始执行，经过一系列的初始化操作后，最后通过 minit.c/enter_supervisor_mode进入Supervisor态，并从内核入口开始执行。相关调用图如下：
+
+    mentry.S/reset_vector -> mentry.S/do_reset -> minit.c/init_first_hart  -> bbl.c/bootloader -> bbl.c/boot_another_hart -> minit.c/enter_supervisor_mode  --> kernel_entry
+
+    mentry.S/reset_vector是bbl的入口，固定于物理地址0x80000000处，reset_vector无条件跳转到do_reset处执行。
+
+    mentry.S/do_reset设置mtvec为trap_vector，设置堆栈指针sp，然后跳转到minit.c/init_first_hart。
+
+    minit.c/init_first_hart进行了一系列的硬件初始化操作后进入bbl.c/bootloader，bootloader然后调用boot_ohter_hart， boot_other_hart又调用minit.c/enter_supervisor_mode，可以看到minit.c/init_first_hart进入bbl.c后最后又回到了minit.c/enter_supervisor_mode。
+
+    minit.c/enter_supervisor_mode进行退回到supervisor态的准备工作，包括设置mstatus的MPP，MPIE以及设置mscratch和mepc，最后通过mret进入supervisor态。进入supervisor态会执行存在mepc中的内核入口函数。
+
+    在v1.10中，进入supervisor态后依然使用物理地址空间，由内核建立页表后再使用虚拟地址空间。（此处仍需验证。）
+
+2. 中断入口
+
+    中断入口mentry.S/trap_vector是从低特权级陷入M态的入口函数，它存储在mtvec中，执行中断处理的功能。相关调用图如下：
+
+    mentry.S/trap_vector -> mentry.S/handle_trap_in_machine_mode -> mentry.S/trap_table
+    -> bad_trap -> mtrap.c/bad_trap
+       pmp_trap -> mtrap.c/pmp_trap
+       illegal_insn_trap -> emulation.c/illegal_insn_trap
+       misaligned_load_trap ->misaligned_ldst.c/misaligned_load_trap
+       misaligned_store_trap -> misaligned_ldst.c/misaligned_store_trap
+       mcall_trap -> mtrap.c/mcall_trap
+       __trap_from_machine_mode -> mtrap.c/trap_from_machine_mode
+    
+    mentry.S/trap_vector首先会根据mcause进行判断，简单的中断如时钟中断会直接处理然后返回，复杂中断会进入mentry.S/handle_trap_in_machine_mode进行处理。
+
+    mentry.S/handle_trap_in_machine_mode会首先保存寄存器内容，然后根据mcause查找mentry.S/trap_table表，并进入相应的中断处理程序进行处理。处理完成后会恢复寄存器内容，然后进行中断返回。
+
+    现在已经实现的中断处理有bad_trap，pmp_trap，illegal_insn_trap，misaligned_load_trap，misaligned_store_trap，mcall_trap，__trap_from_machine_mode等，下面依次介绍。
+
+2.1 bad_trap
+
+    bad_trap会进入mtrap.c/bad_trap，此处bbl直接打印错误信息并死机。
+
+2.2 pmp_trap
+
+    pmp_trap会进入mtrap.c/pmp_trap，与内存访问权限错误相关。
+
+2.3 illegal_insn_trap
+
+    illegal_insn_trap会进入emulation.c/illegal_insn_trap。这里不止包括非法指令，也会包括一些未实现指令的模拟。
+
+2.4 misaligned_load_trap
+
+    misaligned_load_trap会进入misaligned_ldst.c/misaligned_load_trap。
+
+2.5 misaligned_store_trap
+
+    misaligned_store_trap会进入misaligned_ldst.c/misaligned_store_trap。
+
+2.6 mcall_trap
+
+    mcall_trap会进入mtrap.c/mcall_trap，实现了一些SBI函数。SBI是SEE（这里是bbl）向supervisor态程序提供的接口函数。
+
+    v1.10采用了类似于linux系统调用的实现方式，将调用号写入寄存器并调用ecall指令；放弃了以前将SBI映射到虚拟地址空间的方式。（此处仍需验证。）
+
+
+2.7 __trap_from_machine_mode
+
+    __trap_from_machine_mode直接跳转到mtrap.c/trap_from_machine_mode。
+    
+
+
+    
+
+
+
+

@@ -7,21 +7,21 @@
   .align 6
 trap_table:
 #define BAD_TRAP_VECTOR 0
+  .word bad_trap                   #bad_trap
+  .word pmp_trap                   #pmp_trap
+  .word illegal_insn_trap          #illegal_insn_trap
   .word bad_trap
+  .word misaligned_load_trap       #misaligned_load_trap
   .word pmp_trap
-  .word illegal_insn_trap
-  .word bad_trap
-  .word misaligned_load_trap
-  .word pmp_trap
-  .word misaligned_store_trap
+  .word misaligned_store_trap      #misaligned_store_trap
   .word pmp_trap
   .word bad_trap
-  .word mcall_trap
+  .word mcall_trap                 #mcall_trap
   .word bad_trap
   .word bad_trap
   .word bad_trap
 #define TRAP_FROM_MACHINE_MODE_VECTOR 13
-  .word __trap_from_machine_mode
+  .word __trap_from_machine_mode  #__trap_from_machine_mode
   .word bad_trap
   .word bad_trap
 
@@ -185,7 +185,7 @@ restore_regs:
   mret
 
 .Ltrap_from_machine_mode:
-  csrr sp, mscratch
+  csrr sp, mscratch 
   addi sp, sp, -INTEGER_CONTEXT_SIZE
   STORE a0,10*REGBYTES(sp)
   STORE a1,11*REGBYTES(sp)

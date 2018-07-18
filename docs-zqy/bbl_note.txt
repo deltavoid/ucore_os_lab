@@ -1,0 +1,23 @@
+
+
+two entrys 
+
+    init entry:  mentry.S/reset_vector
+
+    trap entry: mentry.S/trap_vector
+
+
+mentry.S/reset_vector -> mentry.S/do_reset -> minit.c/init_first_hart  -> bbl.c/bootloader -> bbl.c/boot_another_hart -> minit.c/enter_supervisor_mode  --> kernel_entry
+
+
+
+mentry.S/trap_vector -> mentry.S/handle_trap_in_machine_mode -> mentry.S/trap_table
+    -> bad_trap -> mtrap.c/bad_trap
+       pmp_trap -> mtrap.c/pmp_trap
+       illegal_insn_trap -> emulation.c/illegal_insn_trap
+       misaligned_load_trap ->misaligned_ldst.c/misaligned_load_trap
+       misaligned_store_trap -> misaligned_ldst.c/misaligned_store_trap
+       mcall_trap -> mtrap.c/mcall_trap
+       __trap_from_machine_mode -> mtrap.c/trap_from_machine_mode
+
+    
