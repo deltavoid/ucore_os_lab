@@ -32,7 +32,7 @@ reset_vector:
   j do_reset
 
 trap_vector:
-  csrrw sp, mscratch, sp
+  csrrw sp, mscratch, sp                       #sp与mscratch交换
   beqz sp, .Ltrap_from_machine_mode
 
   STORE a0, 10*REGBYTES(sp)
