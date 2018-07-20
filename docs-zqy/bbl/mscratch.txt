@@ -1,0 +1,112 @@
+
+
+bbl(riscv-pk) mscratch用法分析
+machine/mentry.S
+
+    总的来说，mscratch是一个M态的寄存器，当hart(hardware thread)不在M态运行时，它保存着M态的栈顶指针；当hart在M态处理中断时，mscratch会被置0，以表明此时正在M态运行。
+
+    下面分几种情况说明mscratch的变化。
+
+1. trap_vector -> .Lmret (从S态或U态陷入M态）
+
+    trap_vector首先执行一条csrrw sp, mscratch, sp指令。
+    指令执行前sp是S态（或U态）的栈指针，mscratch是M态的栈指针，执行之后两者交换，sp是M态的栈指针，供下面使用，mscratch保存着S态（或U态）的栈指针。
+
+    接下来beqz sp, .Ltrap_from_machine_mode
+    如果sp为0，则进入.Ltrap_from_machine_mode，此时sp保存S态（或U）栈指针，不为0。
+
+    csrr a1, mcause
+    bgez a1, .Lhandle_trap_in_machine_mode
+    判断mcause, 如果mcause >= 0, 说明这是一个exception, 进入.Lhandle_trap_in_machine_mode。假设此时mcause < 0（interrupt), 则继续执行下去。
+
+    li a0, IRQ_M_TIMER * 2
+    bne a0, a1, 1f
+    判断是否是时钟中断，不是跳转。假设此时是，则执行下去。
+
+    li a0, MIP_MTIP
+    csrc mie, a0
+    li a0, MIP_STIP
+    csrs mip, a0
+    转发时钟中断到S态。
+
+.Lmret:
+    # Go back whence we came.
+    LOAD a0, 10*REGBYTES(sp)
+    LOAD a1, 11*REGBYTES(sp)
+    csrrw sp, mscratch, sp
+    mret
+    进入.Lmret, 恢复寄存器，交换mscratch和sp，此时mscratch恢复为M态栈指针，sp恢复为S态栈指针，然后中断返回。
+
+2. trap_vector -> .Lhandle_trap_in_machine_mode -> restore_mscratch -> resotre_regs （从S态或U态陷入M态）
+
+    trap_vector首先执行一条csrrw sp, mscratch, sp指令。
+    交换sp和mscratch。
+
+    接下来beqz sp, .Ltrap_from_machine_mode
+    因为sp是M态栈指针，此时不为0。
+
+    csrr a1, mcause
+    bgez a1, .Lhandle_trap_in_machine_mode
+    假设mcause >= 0, 即mcause是一个exception, 则此时跳转到.Lhandle_trap_in_machine_mode
+
+    .Lhandle_trap_in_machine_mode会保存寄存器状态，同时执行一条csrrw t0, mscratch, x0           
+    该语句把mscratch置0，以表明接下来是在M态运行，并把mscratch保存的S态栈指针赋给t0,
+    最后STORE t0, 2*REGBYTES(sp)，即S态栈指针被保存到栈上。
+
+    jalr t1
+    进入具体的中断处理程序。t1是根据mcause算出的中断处理程序函数指针。
+
+restore_mscratch:
+    csrw mscratch, sp
+    mscratch被重新赋值M态栈指针
+
+restore_regs:
+    恢复寄存器，包括恢复S态的栈指针，然后中断返回。
+
+
+3. trap_vector -> .Ltrap_from_machine_mode -> .Lhandle_trap_in_machine_mode -> __trap_from_machine_mode -> restore_regs (从M态进入M态）
+
+    trap_vector首先执行一条csrrw sp, mscratch, sp指令。
+    指令执行前sp是M态的栈指针，mscratch是0，执行之后两者交换，sp是0，mscratch保存着S态（或U态）的栈指针。
+
+    接下来beqz sp, .Ltrap_from_machine_mode
+    如果sp为0，则进入.Ltrap_from_machine_mode，此时sp为0，进入.Ltrap_from_machine_mode
+
+.Ltrap_from_machine_mode:
+    csrr sp, mscratch 
+    .Ltrap_from_machine_mode把mcratch中保存的M态栈指针重新赋给sp, sp下移NTEGER_CONTEXT_SIZE，留出保存寄存器的空间，然后进入.Lhandle_trap_in_machine_mode
+
+.Lhandle_trap_in_machine_mode
+    csrrw t0, mscratch, x0
+    .Lhandle_trap_in_machine_mode保存寄存器到栈上，同时把mscratch重新赋值为0，以表明接下来在M态处理，mscratch保存的中断之前的M态的指针被赋值给t0,然后再保存到栈上。
+
+    jalr t1
+    进入中断处理程序，此处t1是__trap_from_machine_mode
+
+__trap_from_machine_mode:
+    j restore_regs
+    注意此处直接进入restore_regs，不经过restore_mscratch，因此mscratch仍然是0。
+
+restore_regs
+    恢复寄存器，包括恢复栈指针，然后中断返回。
+
+
+
+
+4. 关于mscratch的初始化
+
+    进入reset后mscratch首先被赋值为0，在进入supervisor mode之前mscratch被赋值为M态的栈指针。
+
+    
+
+
+
+
+
+    
+
+
+
+    
+
+
