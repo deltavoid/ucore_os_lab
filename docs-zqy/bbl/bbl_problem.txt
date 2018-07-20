@@ -2,10 +2,19 @@
 
 1. 从bbl进入kennel时使用的依然是物理地址?
 
+    是的。
+
 2. SBI使用类似于系统调用的方式实现，不在需要映射到虚拟地址空间？
+
+    是的。
 
 3. mscratch的用法？
 
+    https://github.com/deltavoid/ucore_os_lab/blob/riscv32-priv-1.10-dev/docs-zqy/bbl/mscratch.txt
+
 4. fdt的交互方式（fdt怎样传给内核？）
 
+
 5. htif的交互方式
+
+    htif是bbl(riscv-pk)与riscv模拟器交互的方式
