@@ -1,0 +1,23 @@
+
+
+进程数据
+
+    proc_struct  (kmalloc)
+
+        context
+
+        mm*
+
+        trapframe* 
+
+
+    trapframe (kernel_stack's top)
+
+    kernel_stack  (page)
+
+
+
+
+
+1. 为什么context里只有一部分寄存器
+
