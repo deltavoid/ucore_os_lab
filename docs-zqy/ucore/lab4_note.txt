@@ -17,7 +17,41 @@
 
 
 
+problem
+
+    1. 为什么context里只有一部分寄存器
 
 
-1. 为什么context里只有一部分寄存器
+note
+
+kernel thread的创建过程
+
+    proc.c/proc_init调用了kernel_thread(init_main, "Hello world!!", 0)，这是一个典型的内核线程创建过程。
+
+    kernel_thread设置中断帧，中断帧中设置了s0(fn), s1(arg), status(sstatus), epc(kernel_thread_entry),然后调用do_fork(clone_flags | CLONE_VM, 0, &tf)。
+
+    do_fork首先调用alloc_proc(), 获得进程控制块，
+           再调用setup_kstack(proc))，获得内核栈，
+           接着调用copy_mm(clone_flags, proc)，这里什么没做，
+           然后调用copy_thread(proc, stack, tf),
+               copy_thread将中断帧tf复制到内核栈的栈顶，并将a0置0,并设置sp,如果是新线程，则为内核栈顶，即tf的首地址。
+                   然后设置context中ra(返回地址)为forkret,sp为proc->tf。
+            最后设置pid,将线程加入链表,并唤醒线程(线程状态置为runnable)。
+
+    至此kernel_thread的初始化就完成了，但还没有开始运行。
+
+
+    当idleproc执行cpu_idle时，发生调度，schedule选择initproc运行，调用proc_run，proc_run执行switch_to，切换线程。
+
+    switch_to保存上一线程的上下文，恢复将要执行的线程的上下文，然后执行ret,这样就会跳转到恢复的上下文中ra(return address)处开始执行。
+
+    initproc context中的ra设置为forkrets,因此跳转到forkrets执行。
+
+    forkrets将栈指针设置为proc->tf，然后跳转到__trapret, __trapret恢复中断上下文，然后执行中断返回。
+
+    initproc中epc被设置为kernel_thread_entry，因此中断返回后进入kernel_thread_entry执行。
+
+    kernel_thread_entry是线程入口，也是为线程函数fn提供的壳函数。它设置fn的函数参数，然后调用fn, 最后在fn执行结束后调用do_exit。
+        
+
 
