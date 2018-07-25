@@ -11,9 +11,9 @@
     csrrw sp, sscratch, sp
     bnez sp, _save_context
 
-_restore_kernel_sp:
-    csrr sp, sscratch
-_save_context:
+_restore_kernel_sp:           #s态
+    csrr sp, sscratch        
+_save_context:                #u态
     addi sp, sp, -36 * REGBYTES
     # save x registers
     STORE x0, 0*REGBYTES(sp)
@@ -74,11 +74,11 @@ _save_context:
     andi s0, s1, SSTATUS_SPP
     bnez s0, _restore_context
 
-_save_kernel_sp:
+_save_kernel_sp:         #u态
     # Save unwound kernel stack pointer in sscratch
     addi s0, sp, 36 * REGBYTES
     csrw sscratch, s0
-_restore_context:
+_restore_context:        #s态
     csrw sstatus, s1
     csrw sepc, s2
 

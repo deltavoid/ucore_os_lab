@@ -210,6 +210,10 @@ __trap_from_machine_mode:
   jal trap_from_machine_mode
   j restore_regs
 
+
+
+
+
 do_reset:
   li x1, 0
   li x2, 0
