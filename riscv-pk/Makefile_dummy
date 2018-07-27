@@ -1,0 +1,9 @@
+cd build
+
+../configure --prefix=/home/zqy/WorkSpace/UcoreOnRiscv/Tools/program/install/riscv/toolchain --host=riscv32-unknown-elf   --disable-fp-emulation --enable-print-device-tree
+
+make 
+
+qemu-system-riscv32 -machine virt -kernel bbl  -nographic
+
+
