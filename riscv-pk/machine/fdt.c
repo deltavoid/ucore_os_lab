@@ -388,6 +388,7 @@ static void clint_done(const struct fdt_scan_node *node, void *extra)
 
     scan->done = 1;
     mtime = (void *)((uintptr_t)scan->reg + 0xbff8);
+    
 
     for (int index = 0; end - value > 0; ++index)
     {
